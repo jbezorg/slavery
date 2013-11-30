@@ -43,7 +43,13 @@
 ' AnimEvents and Animation File names have to be unique through all mods (even for files in different folders)
 ' so it's a good idea to use mod specific abbreviations for all your names
 
-AnimVar sfUpdateState  BOOL 0
-AnimVar sfActorAgenda  INT32 0
-AnimVar sfLeashEnabled INT32 1
-AnimVar sfLeashLength  REAL 256.0
+AnimVar sfUpdateState   BOOL 0
+AnimVar sfActorAgenda   INT32 0
+
+AnimVar sfLeashEnabled  INT32 0
+AnimVar sfLeashActive   INT32 0
+AnimVar sfLeashLOSReq   INT32 1
+AnimVar sfLeashLength   REAL 256.0
+'
+AnimVar sfXferOnQuit    BOOL 1
+AnimVar sfTopDownOnQuit BOOL 1
