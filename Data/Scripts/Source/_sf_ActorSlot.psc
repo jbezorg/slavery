@@ -11,14 +11,16 @@ Bool              property inheritOrder = false  auto hidden
 
 Bool              property locked = false        auto hidden
 
-_sf_actorslot[]   property EMPTYSLOT             auto hidden
+Form[]            property joinedFactions        auto hidden
+
+int               property FACTIONTYPE = 11      autoreadonly
+
 int clearProperties = 7
 
 ; START FULL PROPERTIES ===========================================================================
 ;##################################################################################################
 ; PROPERTY MASTER =================================================================================
 ; 0x00000001 ======================================================================================
-form[]            property joinedFactions        auto hidden
 
 _sf_ActorSlot kMaster = none
 _sf_ActorSlot property master hidden
@@ -40,13 +42,12 @@ _sf_ActorSlot property master hidden
 				unsetClearBit(0x00000001)
 			elseIf hasNewMaster && hasOldMaster
 				kMaster = removeSlave()
-				clearProperties = Math.LogicalOr(clearProperties, 0x00000001)
-
+				setClearBit(0x00000001)
 				kMaster = addMaster(akMaster)
 				unsetClearBit(0x00000001)
 			elseIf !hasNewMaster && hasOldMaster
 				kMaster = removeSlave()
-				clearProperties = Math.LogicalOr(clearProperties, 0x00000001)
+				setClearBit(0x00000001)
 			else
 				setClearBit(0x00000001)
 			endIf
@@ -62,51 +63,33 @@ _sf_ActorSlot property master hidden
 endProperty
 
 _sf_ActorSlot function addMaster(_sf_ActorSlot akSlot)
-	_sf_ActorSlot this = self as _sf_ActorSlot
-	
-	akSlot.slaves       = _sf_utility.pushSlot(this, akSlot.slaves)
-	self.joinedFactions = self.setJoinedFactions(akSlot)
-		
+	int idx = resources._sf_faction_list.GetSize()
+	while idx > 0
+		idx -= 1
+		form nthFaction = resources._sf_faction_list.GetAt(idx)
+		if akSlot.selfRef.IsInFaction(nthFaction as faction)
+			selfRef.AddToFaction(nthFaction as faction)
+			joinedFactions = sslUtility.PushForm(nthFaction, joinedFactions)
+		endIf
+	endWhile
 	return akSlot
 endFunction
 
 _sf_ActorSlot function removeSlave()
-	_sf_ActorSlot this = self as _sf_ActorSlot
-
-	kMaster.slaves      = _sf_utility.removeSlot(this, kMaster.slaves)
-	self.joinedFactions = self.cleanJoinedFactions()
-
+	int idx = joinedFactions.length
+	while idx > 0
+		idx -= 1
+		selfRef.RemoveFromFaction(joinedFactions[idx] as faction)
+	endWhile
+	joinedFactions = nullFormArray()
 	return none
 endFunction
-
-form[] function setJoinedFactions(_sf_ActorSlot akSlot)
-	int idx = akSlot.myFactions.length
-	while idx > 0
-		idx -= 1
-		SelfRef.SetFactionRank(akSlot.myFactions[idx] as Faction, 1)
-	endWhile
-	
-	return akSlot.myFactions
-endFunction
-
-form[] function cleanJoinedFactions()
-	int idx = self.joinedFactions.length
-	while idx > 0
-		idx -= 1
-		SelfRef.RemoveFromFaction(self.joinedFactions[idx] as Faction)
-	endWhile
-	
-	return nullFormArray()
-endFunction
-
-
 
 
 
 ;##################################################################################################
 ; PROPERTY SELFREF ================================================================================
 ; 0x00000002 ======================================================================================
-Form[]            property myFactions            auto hidden
 int               property selfId = -1           auto hidden
 
 actor mySelfRef = none
@@ -144,21 +127,16 @@ actor property selfRef hidden
 endProperty
 
 actor function addSelf(actor akActor)
-	self.selfId     = GetID()
-	self.myFactions = slavery.getMyFactions(akActor)
+	ForceRefTo(akActor)
 
+	self.selfId     = GetID()
 	slavery.SetAliasID(akActor, selfId)
-	
-	ForceRefTo( akActor )
 	return akActor
 endFunction
 
 actor function removeSelf()
 	self.selfId     = -1
-	self.myFactions = nullFormArray()
-
 	slavery.ClearAliasID(mySelfRef)
-	
 	return none
 endFunction
 
@@ -197,27 +175,18 @@ _sf_ActorSlot[] property slaves hidden
 endProperty
 
 _sf_ActorSlot[] function addSlaves(_sf_ActorSlot[] akSlots)
-	_sf_ActorSlot this = self as _sf_ActorSlot
-
-	int idx = akSlots.length
-	while idx > 0
-		idx -= 1
-		akSlots[idx].master = this
-	endWhile
-	
 	return _sf_utility.compressSlotArray(akSlots)
 endFunction
 
 _sf_ActorSlot[] function removeSlaves()
-	int idx = slaves.length
-	while idx > 0
-		idx -= 1
-		mySlaves[idx].master = none
-	endWhile
-	
 	return nullSlotArray()
 endFunction
 ; END FULL PROPERTIES =============================================================================
+
+
+event OnCellLoad()
+
+endEvent
 
 
 ; START LOCAL SCOPE FUNCTIONS =====================================================================
@@ -258,4 +227,32 @@ endFunction
 _sf_ActorSlot[] function nullSlotArray()
 	_sf_ActorSlot[] empty
 	return empty
+endFunction
+
+form[] function getMyFactions(actor akActor, int aiType = 11)
+	form[] forms1 = new form[128]
+
+	int idx = 0
+	int cnt = 0
+	form nthForm = (akActor as ObjectReference).GetNthForm(idx)
+	while nthForm
+		Debug.TraceConditional("> > > > > > > > > >"+akActor+":"+nthForm+":"+nthForm.GetType(), slavery.verbose)
+
+		if nthForm.GetType() == aiType
+			forms1[cnt] = nthForm
+			cnt += 1
+		endIf
+		idx += 1
+		nthForm = (akActor as ObjectReference).GetNthForm(idx)
+	endWhile
+
+	Debug.TraceConditional("> > > > > > > > > >slavery:getMyFactions:count:"+akActor+":"+cnt, slavery.verbose)
+	
+	form[] forms2 = sslUtility.FormArray(cnt)
+	while cnt > 0
+		cnt -= 1
+		forms2[cnt] = forms1[cnt]
+	endWhile
+
+	return forms2
 endFunction

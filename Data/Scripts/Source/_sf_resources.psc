@@ -11,9 +11,9 @@ Keyword     Property _sf_slave_kw           Auto
 Faction     Property _sf_mult_fact          Auto  
 Faction     Property _sf_modu_fact          Auto  
 Faction     Property _sf_sign_fact          Auto  
+FormList    Property _sf_faction_list       Auto  
 
 
-; Fuck it, I'm going to cheat.
 ; Obsolete/Unused Stats
 ; altered*	retained**	reboot***
 ;	[   ]	[   ]		[   ]	"CombatHealthRegenMultMod"
@@ -43,5 +43,3 @@ Faction     Property _sf_sign_fact          Auto
 ;     Note: tested at values above 100, they may have reset
 ;     to a lower value for the Condition stats
 ; *** value set on NPC was retained after game restart.
-
-string property aliasStat = "BypassVendorKeywordCheck" autoreadonly
