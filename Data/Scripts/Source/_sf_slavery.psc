@@ -1,8 +1,10 @@
 Scriptname _sf_slavery extends Quest Conditional
 
-bool              property zbfLoaded      auto
-bool              property verbose        auto
-_sf_resources     property resources      auto
+bool              property zbfLoaded        auto Conditional
+bool              property SLLoaded         auto Conditional
+bool              property SLArousedLoaded  auto Conditional
+bool              property verbose          auto Conditional
+_sf_resources     property resources        auto
 
 ; ERROR CODES =====================================================================================
 ;
@@ -11,10 +13,10 @@ _sf_resources     property resources      auto
 ; -1.[n] - Invalid parameter where [n] is the parameter. None
 ; -2.[n] - Invalid parameter where [n] is the parameter. Dead or disabled
 ; -3.[n] - A property of parameter [n] makes the passed value invalid. e.g. max slaves reached
-; -3.0   - Internal operation failed
+; -3.0   - Internal operation failed specific to the function
 
 
-; BASE FUNCTIONS ==================================================================================
+; START BASE FUNCTIONS ============================================================================
 float function make(Actor akSlave, Actor akMaster, string asHook = "")
 	_sf_ActorSlot kMaster = none
 	_sf_ActorSlot kSlave  = none
@@ -71,6 +73,7 @@ float function sync(_sf_ActorSlot akSlave, _sf_ActorSlot akMaster, string asHook
 		error  = "akMaster is none"
 	else
 		akSlave.master  = akMaster
+		akSlave.status  = 0
 		akMaster.slaves = _sf_utility.pushSlot(akSlave, akMaster.slaves)
 		status = 1.0
 		error  = "success"
@@ -100,7 +103,7 @@ float function releaseSlaves(Actor akActor, string sHook = "")
 			status = 1.0
 			error  = "success"
 
-			slot.slaves = none
+			slot.slaves = _sf_utility.nullSlotArray()
 		else
 			status = -2.1
 			error  = "could not obtain the actor's alias script"
@@ -138,13 +141,16 @@ float function remove(Actor akActor, string sHook = "")
 		endIf
 	endIf
 
-	SendModEvent("slavery.quit", error, status)
+	SendModEvent("slavery.remove", error, status)
 	if sHook != ""
-		SendModEvent("slavery.releaseSlaves."+sHook, error, status)
+		SendModEvent("slavery.remove."+sHook, error, status)
 	endIf
 	
 	return status
 endFunction
+; END BASE FUNCTIONS ============================================================================--
+
+
 
 
 ; START TRAVERSE RELATION FUNCTIONS ===============================================================
@@ -236,76 +242,18 @@ endFunction
 
 
 
-; SLAVE LEASH FUNCTIONS ===========================================================================
-function LeashEnabled(Actor akSlave, Bool abState = true)
-	if akSlave != none
-		akSlave.SetAnimationVariableInt("sfLeashEnabled", abState as Int)
-	else
-		Debug.TraceConditional("slavery.LeashEnabled:: akSlave is none", verbose)
-	endIf
-endFunction
-
-function SetLeashLength(Actor akSlave, Float afLength = 256.0)
-	if akSlave != none
-		akSlave.SetAnimationVariableFloat("sfLeashLength", afLength)
-	else
-		Debug.TraceConditional("slavery.SetLeashLength:: akSlave is none", verbose)
-	endIf
-endFunction
-
-float function GetLeashLength(Actor akSlave)
-	if akSlave != none
-		return akSlave.GetAnimationVariableFloat("sfLeashLength")
-	else
-		Debug.TraceConditional("slavery.GetLeashLength:: akSlave is none", verbose)
-		return -1.0
-	endIf
-endFunction
-
-function SetLeashLOS(Actor akSlave, Bool abState = true)
-	if akSlave != none
-		akSlave.SetAnimationVariableInt("sfLeashLOSReq", abState as Int)
-	else
-		Debug.TraceConditional("slavery.SetLeashLOS:: akSlave is none", verbose)
-	endIf
-endFunction
-
-bool function GetLeashLOS(Actor akSlave)
-	if akSlave != none
-		return akSlave.GetAnimationVariableInt("sfLeashLOSReq") as bool
-	else
-		Debug.TraceConditional("slavery.GetLeashLOS:: akSlave is none", verbose)
-	endIf
-endFunction
-
-
-; LEASH UTILITY FUNCTIONS =========================================================================
+; START SLAVE LEASH FUNCTIONS =====================================================================
 Bool function LeashTrigger(Actor akSlave)
 	if akSlave != none
 		Actor kMaster = GetMaster(akSlave)
 		Float fLeash  = GetLeashLength(akSlave)
-		Bool bEnabled = GetLeashActive(akSlave)
+		Bool bEnabled = GetLeashEnabled(akSlave)
 		Bool bLOSReq  = GetLeashLOS(akSlave)
 
 		Bool bDist    = bEnabled && kMaster.GetDistance(akSlave) > fLeash
 		Bool bActive  = bDist && (!bLOSReq || (bLOSReq && kMaster.HasLOS(akSlave)))
 
 		SetLeashActive(akSlave, bActive)
-
-		if bActive
-			Float fHalf  = fLeash/2
-			Float fPX    = -fHalf * Math.Sin(kMaster.GetAngleZ())
-			Float fPY    = -fHalf * Math.Cos(kMaster.GetAngleZ())
-			Float fPZ    = 0.0
-			Float fAX    = 0.0
-			Float fAY    = 0.0
-			Float fAZ    = akSlave.GetAngleZ() - akSlave.GetHeadingAngle(kMaster)
-
-			akSlave.KeepOffsetFromActor(kMaster, fPX, fPY, fPZ, fAX, fAY, fAZ, fHalf, fLeash)
-		else
-			akSlave.ClearKeepOffsetFromActor()
-		endIf
-
 		return bActive
 	else
 		Debug.TraceConditional("slavery.LeashTest:: akSlave is none", verbose)
@@ -313,44 +261,80 @@ Bool function LeashTrigger(Actor akSlave)
 	endIf
 endFunction
 
+bool function GetLeashEnabled(Actor akSlave)
+	if !akSlave
+		Debug.TraceConditional("slavery.GetLeashEnabled:: akSlave is none", verbose)
+	else
+		return GetActorInstance(akSlave).leashEnabled
+	endIf
+endFunction
+
+function SetLeashTarget(Actor akSlave, Actor akTarget)
+	if akSlave == none
+		Debug.TraceConditional("slavery.SetLeashTarget:: akSlave is none", verbose)
+	else
+		GetActorInstance(akSlave).leashTarget = akTarget
+	endIf
+endFunction
+
+function SetLeashEnabled(Actor akSlave, Bool abState = true)
+	if akSlave != none
+		GetActorInstance(akSlave).leashEnabled = abState
+	else
+		Debug.TraceConditional("slavery.SetLeashEnabled:: akSlave is none", verbose)
+	endIf
+endFunction
+
 function SetLeashActive(Actor akSlave, Bool abState = true)
-	if !akSlave
+	if akSlave != none
+		GetActorInstance(akSlave).leashActive = abState
+	else
 		Debug.TraceConditional("slavery.SetLeashActive:: akSlave is none", verbose)
-	elseIf !akSlave.Is3DLoaded()
-		Debug.TraceConditional("slavery.SetLeashActive:: akSlave 3D not loaded", verbose)
+	endIf
+endFunction
+
+bool function GetLeashLOS(Actor akSlave)
+	if akSlave != none
+		return GetActorInstance(akSlave).leashLOS
 	else
-		aiRetention(akSlave, abState)
-		akSlave.SetAnimationVariableInt("sfLeashActive", abState as Int)
+		Debug.TraceConditional("slavery.GetLeashLOS:: akSlave is none", verbose)
 	endIf
 endFunction
 
-bool function GetLeashActive(Actor akSlave)
-	if !akSlave
-		Debug.TraceConditional("slavery.GetLeashActive:: akSlave is none", verbose)
-	elseIf !akSlave.Is3DLoaded()
-		Debug.TraceConditional("slavery.GetLeashActive:: akSlave 3D not loaded", verbose)
+function SetLeashLOS(Actor akSlave, Bool abState = true)
+	if akSlave != none
+		GetActorInstance(akSlave).leashLOS = abState
 	else
-		return akSlave.GetAnimationVariableInt("sfLeashActive") as bool
+		Debug.TraceConditional("slavery.SetLeashLOS:: akSlave is none", verbose)
 	endIf
 endFunction
 
-
-
-
-; MASTER FUNCTIONS ================================================================================
-function SetXferOnQuit(Actor akMaster, Bool abTransfer = true)
-	_sf_ActorSlot slot = GetActorScript(akMaster)
-	if slot
-		slot.xferOnQuit = abTransfer
+float function GetLeashLength(Actor akSlave)
+	if akSlave != none
+		return GetActorInstance(akSlave).leashLength
+	else
+		Debug.TraceConditional("slavery.GetLeashLength:: akSlave is none", verbose)
 	endIf
 endFunction
 
-function SetInheritOrderOnQuit(Actor akMaster, Bool abTopDown = true)
-	_sf_ActorSlot slot = GetActorScript(akMaster)
-	if slot
-		slot.inheritOrder = abTopDown
+function SetLeashLength(Actor akSlave, float afVal = 256.0)
+	if akSlave != none
+		GetActorInstance(akSlave).leashLength = afVal
+	else
+		Debug.TraceConditional("slavery.SetLeashLength:: akSlave is none", verbose)
 	endIf
 endFunction
+; END SLAVE LEASH FUNCTIONS =======================================================================
+
+
+
+; START MASTER FUNCTIONS ==========================================================================
+function transfer(Actor akOldMaster, Actor akNewMaster)
+	_sf_ActorSlot slotOld = GetActorScript(akOldMaster)
+	_sf_ActorSlot slotNew = GetActorScript(akNewMaster)
+
+endFunction
+; END MASTER FUNCTIONS ============================================================================
 
 
 
@@ -411,42 +395,21 @@ _sf_ActorSlot function GetActorInstance(Actor akActor)
 		return none
 	endIf
 endFunction
+; END ALIAS FUNCTIONS =============================================================================
 
-; +/- 16256
+
+
 int function GetAliasID(Actor akActor)
-	int mult = akActor.GetFactionRank(resources._sf_mult_fact)
-	int modu = akActor.GetFactionRank(resources._sf_modu_fact)
-	int sign = akActor.GetFactionRank(resources._sf_sign_fact)
+	int mult = akActor.GetFactionRank(resources._sf_alias_mult_fact)
+	int modu = akActor.GetFactionRank(resources._sf_alias_modu_fact)
+	int sign = akActor.GetFactionRank(resources._sf_alias_sign_fact)
 
 	if mult < 0 || modu < 0
-		return -2147483648
+		return resources.VOID
 	else
 		return (mult * 127 + modu) * sign
 	endIf
 endFunction
-
-; +/- 16256
-function SetAliasID(Actor akActor, int aiVal)
-	int abso = math.abs(aiVal) as int
-	int mult = abso / 127 ;int division is floored
-	int modu = abso % 127
-	int sign = 1
-
-	if aiVal < 0
-		sign = -1
-	endIf
-
-	akActor.SetFactionRank(resources._sf_mult_fact, mult)
-	akActor.SetFactionRank(resources._sf_modu_fact, modu)
-	akActor.SetFactionRank(resources._sf_sign_fact, sign)
-endFunction
-
-function ClearAliasID(Actor akActor)
-	akActor.RemoveFromFaction(resources._sf_mult_fact)
-	akActor.RemoveFromFaction(resources._sf_modu_fact)
-	akActor.RemoveFromFaction(resources._sf_sign_fact)
-endFunction
-; END ALIAS FUNCTIONS =============================================================================
 
 function ClearActorInstance(Actor akActor)
 	_sf_ActorSlot slot = GetActorScript(akActor)

@@ -8,10 +8,18 @@ MagicEffect Property _sf_slave_base_me      Auto
 MagicEffect Property _sf_master_base_me     Auto  
 Keyword     Property _sf_master_kw          Auto  
 Keyword     Property _sf_slave_kw           Auto  
-Faction     Property _sf_mult_fact          Auto  
-Faction     Property _sf_modu_fact          Auto  
-Faction     Property _sf_sign_fact          Auto  
+Faction     Property _sf_alias_mult_fact    Auto  
+Faction     Property _sf_alias_modu_fact    Auto  
+Faction     Property _sf_alias_sign_fact    Auto  
+Faction     Property _sf_leash_mult_fact    Auto  
+Faction     Property _sf_leash_modu_fact    Auto  
+Faction     Property _sf_focus_mult_fact    Auto  
+Faction     Property _sf_focus_modu_fact    Auto  
+Faction     Property _sf_agenda_fact        Auto
 FormList    Property _sf_faction_list       Auto  
+
+int         Property VOID = -2147483648     autoreadonly
+
 
 
 ; Obsolete/Unused Stats
