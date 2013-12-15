@@ -10,6 +10,7 @@ MagicEffect Property _sf_slave_base_me      Auto
 MagicEffect Property _sf_master_base_me     Auto  
 Keyword     Property _sf_master_kw          Auto  
 Keyword     Property _sf_slave_kw           Auto  
+Keyword     Property _sf_actorslot_kw       Auto  
 Faction     Property _sf_alias_mult_fact    Auto  
 Faction     Property _sf_alias_modu_fact    Auto  
 Faction     Property _sf_alias_sign_fact    Auto  

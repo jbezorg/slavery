@@ -124,6 +124,49 @@ actor property selfRef hidden
 	endFunction
 endProperty
 
+Bool myAIActive
+Bool property AIActive hidden
+	function Set(bool abActive)
+		bool isPlayer = selfRef == Game.GetPlayer()
+
+		if isPlayer
+			Debug.TraceConditional("slavery.evalAI:: player " + abActive, resources.verbose)
+			if abActive
+				Game.SetPlayerAiDriven(true)
+
+				slavery.bMovement = Game.IsMovementControlsEnabled()
+				slavery.bFighting = Game.IsFightingControlsEnabled()
+				slavery.bCamera   = Game.IsCamSwitchControlsEnabled()
+				slavery.bLooking  = Game.IsLookingControlsEnabled()
+				slavery.bSneaking = Game.IsSneakingControlsEnabled()
+				slavery.bMenu     = Game.IsMenuControlsEnabled()
+				slavery.bActivate = Game.IsActivateControlsEnabled()
+				slavery.bJournal  = Game.IsJournalControlsEnabled()
+
+				Game.DisablePlayerControls(true, true, true, !slavery.bLooking, true, true, true, true)
+				Game.ForceThirdPerson()
+			else
+				Game.EnablePlayerControls(slavery.bMovement, slavery.bFighting, slavery.bCamera, !slavery.bLooking, slavery.bSneaking, slavery.bMenu, slavery.bActivate, slavery.bJournal)
+
+				Game.SetPlayerAiDriven(false)
+			endIf
+		else
+			Debug.TraceConditional("slavery.evalAI:: "+selfRef+" "+abActive, resources.verbose)
+			If abActive
+				setActorOffset()
+			else
+				clearActorOffset()
+			endIf
+		endIf
+
+		selfRef.EvaluatePackage()
+		myAIActive = abActive
+	endFunction
+	Bool function Get()
+		return myAIActive
+	endFunction
+endProperty
+
 actor function addSelf(actor akActor)
 	ForceRefTo(akActor)
 	return akActor
@@ -207,22 +250,6 @@ Bool property leashEnabled hidden
 	endFunction
 endProperty
 
-Bool myLeashActive
-Bool property leashActive hidden
-	function Set(bool abActive)
-		if myLeashActive && !abActive
-			slavery.evalAI(selfRef, false)
-		elseIf !myLeashActive && abActive
-			slavery.evalAI(selfRef, true)
-		endIf
-
-		myLeashActive = abActive
-	endFunction
-	Bool function Get()
-		return myLeashActive
-	endFunction
-endProperty
-
 float mLeashLength
 float property leashLength hidden
 	function Set(float afVal)
@@ -241,13 +268,16 @@ Actor property leashTarget hidden
 		Bool hasOldActor = myLeashTarget != none
 
 		if hasNewActor && !hasOldActor
+			leashEnabled = true
 			SetLeashID(selfRef, index)
 			SetLeashID(akActor, index)
 		elseIf hasNewActor && hasOldActor
+			leashEnabled = true
 			ClearLeashID(myLeashTarget)
 			SetLeashID(selfRef, index)
 			SetLeashID(akActor, index)
 		elseIf !hasNewActor && hasOldActor
+			leashEnabled = false
 			ClearLeashID(myLeashTarget)
 			ClearLeashID(akActor)
 		endIf
@@ -317,34 +347,27 @@ endFunction
 Actor myFocusTarget
 Actor property focusTarget hidden
 	function Set(Actor akActor)
-		if akActor == none
-			ClearFocusID(selfRef)
-		else
+		Bool hasNewActor = akActor != none
+		Bool hasOldActor = myFocusTarget != none
+
+		if hasNewActor && !hasOldActor
 			SetFocusID(selfRef, index)
 			SetFocusID(akActor, index)
-		endIf
-
-		if myFocusTarget && myFocusTarget != akActor
+		elseIf hasNewActor && hasOldActor
 			ClearFocusID(myFocusTarget)
+			SetFocusID(selfRef, index)
+			SetFocusID(akActor, index)
+		elseIf !hasNewActor && hasOldActor
+			ClearFocusID(myFocusTarget)
+			ClearFocusID(akActor)
 		endIf
-
-		myFocusTarget = akActor
+			
+		myFocusTarget = akActor	
 	endFunction
 	Actor function Get()
 		return myFocusTarget
 	endFunction
 endProperty
-
-int function GetFocusID(Actor akActor)
-	int mult = akActor.GetFactionRank(resources._sf_focus_mult_fact)
-	int modu = akActor.GetFactionRank(resources._sf_focus_modu_fact)
-
-	if mult < 0 || modu < 0
-		return resources.VOID
-	else
-		return mult * 127 + modu
-	endIf
-endFunction
 
 function SetFocusID(Actor akActor, int aiVal)
 	int abso = math.abs(aiVal) as int
@@ -372,6 +395,7 @@ int myAgenda = 0
 int property agenda hidden
 	function Set(int aiAgenda)
 		selfRef.SetFactionRank(resources._sf_agenda_fact, aiAgenda)
+		selfRef.EvaluatePackage()
 		myAgenda = aiAgenda
 	endFunction
 	int function Get()
@@ -392,6 +416,10 @@ endEvent
 
 event OnCellLoad()
 	selfRef.EvaluatePackage()
+endEvent
+
+event OnPackageStart(Package akNewPackage)
+	Debug.Trace("We just started running the " + akNewPackage + " package on " + selfRef + " ai active " + AIActive)
 endEvent
 
 
