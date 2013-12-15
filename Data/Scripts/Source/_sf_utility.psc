@@ -1,4 +1,4 @@
-Scriptname _sf_utility
+Scriptname _sf_utility extends Quest
 
 int[] function RemoveInt(int var, int[] array) global
 	int len = array.Length
@@ -7,7 +7,7 @@ int[] function RemoveInt(int var, int[] array) global
 	endIf
 
 	int cnt = len
-	int[] pulled = sslUtility.IntArray(len - 1)
+	int[] pulled = IntArray(len - 1)
 	while len
 		len -=1
 		if array[len] != var
@@ -66,6 +66,30 @@ actor[] function compressActorArray(actor[] array) global
 	else
 		return none
 	endIf
+endFunction
+
+form[] function getMyFactions(actor akActor, int aiType = 11) global
+	form[] forms1 = new form[128]
+
+	int idx = 0
+	int cnt = 0
+	form nthForm = (akActor as ObjectReference).GetNthForm(idx)
+	while nthForm && cnt < 128
+		if nthForm.GetType() == aiType
+			forms1[cnt] = nthForm
+			cnt += 1
+		endIf
+		idx += 1
+		nthForm = (akActor as ObjectReference).GetNthForm(idx)
+	endWhile
+
+	form[] forms2 = _sf_utility.FormArray(cnt)
+	while cnt > 0
+		cnt -= 1
+		forms2[cnt] = forms1[cnt]
+	endWhile
+
+	return forms2
 endFunction
 
 
@@ -423,7 +447,7 @@ bool function isBitSet(int val, int bit) global
 endFunction
 
 
-;import from sslUtility by Ashal
+;import from _sf_utility by Ashal
 
 ;/-----------------------------------------------\;
 ;|	Float Utility Functions                      |;

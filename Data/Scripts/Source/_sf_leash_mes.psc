@@ -5,15 +5,32 @@ _sf_slavery     property slavery        auto
 Actor kTarget
 
 event OnEffectStart(Actor akTarget, Actor akCaster)
-	kTarget = akTarget
-	RegisterForSingleUpdate(1.0)
+	GoToState("active")
+	if akTarget
+		kTarget = akTarget
+	else
+		kTarget = akCaster
+	endIf
+	
+	if kTarget
+		RegisterForSingleUpdate(1.0)
+	else
+		Dispel()
+	endIf
 endEvent
 
 event OnEffectFinish(Actor akTarget, Actor akCaster)
-	slavery.SetLeashActive(kTarget, false)
+	GoToState("null")
 endEvent
 
-event OnUpdate()
-	slavery.LeashTrigger(kTarget)
-	RegisterForSingleUpdate(1.0)
-endEvent
+auto state active
+	event OnUpdate()
+		slavery.LeashTrigger(kTarget)
+		RegisterForSingleUpdate(1.0)
+	endEvent
+endState
+
+state null
+	event OnUpdate()
+	endEvent
+endState

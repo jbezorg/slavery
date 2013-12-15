@@ -1,4 +1,6 @@
-Scriptname _sf_resources extends Quest  
+Scriptname _sf_resources extends Quest Conditional
+
+Bool        Property verbose                Auto
 
 Spell       Property _sf_trigger_spell      Auto  
 Spell       Property _sf_slave_spell        Auto  
@@ -13,6 +15,7 @@ Faction     Property _sf_alias_modu_fact    Auto
 Faction     Property _sf_alias_sign_fact    Auto  
 Faction     Property _sf_leash_mult_fact    Auto  
 Faction     Property _sf_leash_modu_fact    Auto  
+Faction     Property _sf_leash_active_fact  Auto  
 Faction     Property _sf_focus_mult_fact    Auto  
 Faction     Property _sf_focus_modu_fact    Auto  
 Faction     Property _sf_agenda_fact        Auto
@@ -21,6 +24,7 @@ FormList    Property _sf_faction_list       Auto
 int         Property VOID = -2147483648     autoreadonly
 
 
+Faction     Property slAnimating            Auto Conditional
 
 ; Obsolete/Unused Stats
 ; altered*	retained**	reboot***
