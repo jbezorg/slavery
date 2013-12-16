@@ -27,6 +27,18 @@ int         Property VOID = -2147483648     autoreadonly
 
 Faction     Property slAnimating            Auto Conditional
 
+
+int messageid = 0
+function trace(string asMessage, int aiStack = -1)
+	if aiStack > -1 && aiStack < 3
+		Debug.TraceStack(">>SF>> "+messageid+" "+asMessage, aiStack)
+	else
+		Debug.TraceConditional(">>SF>> "+messageid+" "+asMessage, verbose)
+	endIf
+	
+	messageid += 1
+endFunction
+
 ; Obsolete/Unused Stats
 ; altered*	retained**	reboot***
 ;	[   ]	[   ]		[   ]	"CombatHealthRegenMultMod"

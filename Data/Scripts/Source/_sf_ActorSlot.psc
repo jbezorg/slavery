@@ -8,6 +8,7 @@ _sf_resources     property resources             auto hidden
 
 Bool              property locked = false        auto hidden
 Bool              property leashLOS = false      auto hidden
+Bool              property isPlayer = false      auto hidden
 
 Form[]            property joinedFactions        auto hidden
 Int               property status                auto hidden
@@ -124,42 +125,17 @@ actor property selfRef hidden
 	endFunction
 endProperty
 
-Bool myAIActive
+Bool myAIActive = false
 Bool property AIActive hidden
 	function Set(bool abActive)
-		bool isPlayer = selfRef == Game.GetPlayer()
-
-		if isPlayer
-			Debug.TraceConditional("slavery.evalAI:: player " + abActive, resources.verbose)
-			if abActive
-				Game.SetPlayerAiDriven(true)
-
-				slavery.bMovement = Game.IsMovementControlsEnabled()
-				slavery.bFighting = Game.IsFightingControlsEnabled()
-				slavery.bCamera   = Game.IsCamSwitchControlsEnabled()
-				slavery.bLooking  = Game.IsLookingControlsEnabled()
-				slavery.bSneaking = Game.IsSneakingControlsEnabled()
-				slavery.bMenu     = Game.IsMenuControlsEnabled()
-				slavery.bActivate = Game.IsActivateControlsEnabled()
-				slavery.bJournal  = Game.IsJournalControlsEnabled()
-
-				Game.DisablePlayerControls(true, true, true, !slavery.bLooking, true, true, true, true)
-				Game.ForceThirdPerson()
-			else
-				Game.EnablePlayerControls(slavery.bMovement, slavery.bFighting, slavery.bCamera, !slavery.bLooking, slavery.bSneaking, slavery.bMenu, slavery.bActivate, slavery.bJournal)
-
-				Game.SetPlayerAiDriven(false)
-			endIf
-		else
-			Debug.TraceConditional("slavery.evalAI:: "+selfRef+" "+abActive, resources.verbose)
-			If abActive
-				setActorOffset()
-			else
-				clearActorOffset()
-			endIf
+		if !myAIActive && abActive
+			resources.trace("AIActive"+abActive)
+			EnableAI()
+		elseIf myAIActive && !abActive
+			resources.trace("AIActive"+abActive)
+			DisableAI()
 		endIf
 
-		selfRef.EvaluatePackage()
 		myAIActive = abActive
 	endFunction
 	Bool function Get()
@@ -168,16 +144,71 @@ Bool property AIActive hidden
 endProperty
 
 actor function addSelf(actor akActor)
+	isPlayer = akActor == Game.GetPlayer()
 	ForceRefTo(akActor)
 	return akActor
 endFunction
 
 actor function removeSelf()
-	index = -1
+	isPlayer = false
+	index    = -1
 	mySelfRef.RemoveFromFaction(resources._sf_alias_mult_fact)
 	mySelfRef.RemoveFromFaction(resources._sf_alias_modu_fact)
 	mySelfRef.RemoveFromFaction(resources._sf_alias_sign_fact)
 	return none
+endFunction
+
+function setActorOffset()
+	if selfRef
+		Float fHalf  = leashLength/2.0
+		Float fPX    = -fHalf * Math.Sin(leashTarget.GetAngleZ())
+		Float fPY    = -fHalf * Math.Cos(leashTarget.GetAngleZ())
+		Float fPZ    = 0.0
+		Float fAX    = 0.0
+		Float fAY    = 0.0
+		Float fAZ    = selfRef.GetAngleZ() - selfRef.GetHeadingAngle(leashTarget)
+
+		selfRef.KeepOffsetFromActor(leashTarget, fPX, fPY, fPZ, fAX, fAY, fAZ, fHalf, leashLength)
+	endIf
+endFunction
+
+function clearActorOffset()
+	if selfRef
+		selfRef.ClearKeepOffsetFromActor()
+	endIf
+endFunction
+
+function EnableAI()
+	if isPlayer
+		Game.SetPlayerAiDriven(true)
+
+		slavery.bMovement = Game.IsMovementControlsEnabled()
+		slavery.bFighting = Game.IsFightingControlsEnabled()
+		slavery.bCamera   = Game.IsCamSwitchControlsEnabled()
+		slavery.bLooking  = Game.IsLookingControlsEnabled()
+		slavery.bSneaking = Game.IsSneakingControlsEnabled()
+		slavery.bMenu     = Game.IsMenuControlsEnabled()
+		slavery.bActivate = Game.IsActivateControlsEnabled()
+		slavery.bJournal  = Game.IsJournalControlsEnabled()
+
+		Game.DisablePlayerControls(true, true, true, !slavery.bLooking, true, true, true, true)
+		Game.ForceThirdPerson()
+	else
+		setActorOffset()
+	endIf
+	
+	selfRef.EvaluatePackage()
+endFunction
+
+function DisableAI()
+	if isPlayer
+		Game.EnablePlayerControls(slavery.bMovement, slavery.bFighting, slavery.bCamera, !slavery.bLooking, slavery.bSneaking, slavery.bMenu, slavery.bActivate, slavery.bJournal)
+		Game.SetPlayerAiDriven(false)
+	else
+		clearActorOffset()
+	endIf
+
+	selfRef.EvaluatePackage()
 endFunction
 
 
@@ -234,19 +265,19 @@ endFunction
 ;##################################################################################################
 ; PROPERTY LEASH ==================================================================================
 ; 0x00000008 ======================================================================================
-Bool myLeashEnabled
-Bool property leashEnabled hidden
-	function Set(bool abEnabled)
-		if myLeashEnabled && !abEnabled
+Bool myLeashActive
+Bool property leashActive hidden
+	function Set(bool abActive)
+		if myLeashActive && !abActive
 			selfRef.SetFactionRank(resources._sf_leash_active_fact, 0)
-		elseIf !myLeashEnabled && abEnabled
+		elseIf !myLeashActive && abActive
 			selfRef.SetFactionRank(resources._sf_leash_active_fact, 1)
 		endIf
 
-		myLeashEnabled = abEnabled
+		myLeashActive = abActive
 	endFunction
 	Bool function Get()
-		return myLeashEnabled
+		return myLeashActive
 	endFunction
 endProperty
 
@@ -268,16 +299,13 @@ Actor property leashTarget hidden
 		Bool hasOldActor = myLeashTarget != none
 
 		if hasNewActor && !hasOldActor
-			leashEnabled = true
 			SetLeashID(selfRef, index)
 			SetLeashID(akActor, index)
 		elseIf hasNewActor && hasOldActor
-			leashEnabled = true
 			ClearLeashID(myLeashTarget)
 			SetLeashID(selfRef, index)
 			SetLeashID(akActor, index)
 		elseIf !hasNewActor && hasOldActor
-			leashEnabled = false
 			ClearLeashID(myLeashTarget)
 			ClearLeashID(akActor)
 		endIf
@@ -300,26 +328,6 @@ int function GetLeashID(Actor akActor)
 	endIf
 endFunction
 
-function setActorOffset()
-	if selfRef
-		Float fHalf  = leashLength/2.0
-		Float fPX    = -fHalf * Math.Sin(leashTarget.GetAngleZ())
-		Float fPY    = -fHalf * Math.Cos(leashTarget.GetAngleZ())
-		Float fPZ    = 0.0
-		Float fAX    = 0.0
-		Float fAY    = 0.0
-		Float fAZ    = selfRef.GetAngleZ() - selfRef.GetHeadingAngle(leashTarget)
-
-		selfRef.KeepOffsetFromActor(leashTarget, fPX, fPY, fPZ, fAX, fAY, fAZ, fHalf, leashLength)
-	endIf
-endFunction
-
-function clearActorOffset()
-	if selfRef
-		selfRef.ClearKeepOffsetFromActor()
-	endIf
-endFunction
-
 function SetLeashID(Actor akActor, int aiVal)
 	int abso = math.abs(aiVal) as int
 	if abso <= 16256
@@ -329,7 +337,7 @@ function SetLeashID(Actor akActor, int aiVal)
 		akActor.SetFactionRank(resources._sf_leash_mult_fact, mult)
 		akActor.SetFactionRank(resources._sf_leash_modu_fact, modu)
 	else
-		Debug.TraceConditional("slavery.SetLeashID:: absolute value cannot exceed 16256", resources.verbose)
+		resources.trace("slavery.SetLeashID:: absolute value cannot exceed 16256")
 	endIf
 endFunction
 
@@ -378,7 +386,7 @@ function SetFocusID(Actor akActor, int aiVal)
 		akActor.SetFactionRank(resources._sf_focus_mult_fact, mult)
 		akActor.SetFactionRank(resources._sf_focus_modu_fact, modu)
 	else
-		Debug.TraceConditional("slavery.SetFocusID:: absolute value cannot exceed 16256", resources.verbose)
+		resources.trace("slavery.SetFocusID:: absolute value cannot exceed 16256")
 	endIf
 endFunction
 
@@ -419,7 +427,12 @@ event OnCellLoad()
 endEvent
 
 event OnPackageStart(Package akNewPackage)
-	Debug.Trace("We just started running the " + akNewPackage + " package on " + selfRef + " ai active " + AIActive)
+endEvent
+
+event OnPackageChange(Package akOldPackage)
+endEvent
+
+event OnPackageEnd(Package akOldPackage)
 endEvent
 
 

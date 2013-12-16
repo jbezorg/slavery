@@ -2,9 +2,8 @@ Scriptname _sf_ai_mes extends activemagiceffect
 
 _sf_slavery     property slavery        auto
 
-Actor kTarget
-Bool  bAICurrent
-Bool  bAIState
+Actor kTarget    = none
+Bool  bAIState   = false
 
 event OnEffectStart(Actor akTarget, Actor akCaster)
 	GoToState("active")
@@ -29,12 +28,6 @@ endEvent
 auto state active
 	event OnUpdate()
 		bAIState = slavery.LeashTrigger(kTarget)
-		
-		if bAIState != bAICurrent
-			bAICurrent = bAIState
-			slavery.SetAIActive(kTarget, bAIState)
-		endIf
-
 		RegisterForSingleUpdate(1.0)
 	endEvent
 endState

@@ -204,7 +204,7 @@ endFunction
 ; START TRAVERSE RELATION FUNCTIONS ===============================================================
 Actor function GetMaster(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetMaster:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetMaster:: akSlave is none")
 		return none
 	else
 		return GetActorScript(akSlave).master.selfRef
@@ -214,7 +214,7 @@ endFunction
 Actor[] function GetAllMasters(Actor akSlave)
 	actor[] kMasters
 	if akSlave == none
-		Debug.TraceConditional("slavery.GetAllMasters:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetAllMasters:: akSlave is none")
 		return none
 	else
 		kMasters = new actor[1]
@@ -230,7 +230,7 @@ endFunction
 
 _sf_ActorSlot function GetMasterScript(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetMaster:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetMaster:: akSlave is none")
 		return none
 	else
 		return GetActorScript(akSlave).master
@@ -240,7 +240,7 @@ endFunction
 _sf_ActorSlot[] function GetAllMasterScripts(Actor akSlave)
 	_sf_ActorSlot[] kMasters
 	if akSlave == none
-		Debug.TraceConditional("slavery.GetAllMasters:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetAllMasters:: akSlave is none")
 	else
 		kMasters = new _sf_ActorSlot[1]
 		kMasters[0] = GetActorScript(akSlave).master
@@ -256,7 +256,7 @@ endFunction
 Actor[] function GetSlaves(Actor akMaster)
 	Actor[] slots
 	if akMaster == none
-		Debug.TraceConditional("slavery.GetSlaves:: akMaster is none", resources.verbose)
+		resources.trace("slavery.GetSlaves:: akMaster is none")
 	else
 		_sf_ActorSlot slot = GetActorScript(akMaster)
 		if slot != none
@@ -276,7 +276,7 @@ endFunction
 _sf_ActorSlot[] function GetSlaveScripts(Actor akMaster)
 	_sf_ActorSlot[] slaves
 	if akMaster == none
-		Debug.TraceConditional("slavery.GetSlaves:: akMaster is none", resources.verbose)
+		resources.trace("slavery.GetSlaves:: akMaster is none")
 	else
 		_sf_ActorSlot slot = GetActorScript(akMaster)
 		if slot
@@ -294,26 +294,26 @@ endFunction
 ; START AGENDA FUNCTIONS ==========================================================================
 function SetAgenda(Actor akActor, Int aiAgenda = 0)
 	if !akActor
-		Debug.TraceConditional("slavery.SetAgenda:: akActor is none", resources.verbose)
+		resources.trace("slavery.SetAgenda:: akActor is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akActor)
 		if slot
 			slot.agenda = aiAgenda
 		else
-			Debug.TraceConditional("slavery.SetAgenda:: cannot get slot for "+akActor, resources.verbose)
+			resources.trace("slavery.SetAgenda:: cannot get slot for "+akActor)
 		endIf
 	endIf
 endFunction
 
 int function GetAgenda(Actor akActor)
 	if !akActor
-		Debug.TraceConditional("slavery.GetAgenda:: akActor is none", resources.verbose)
+		resources.trace("slavery.GetAgenda:: akActor is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akActor)
 		if slot
 			return slot.agenda
 		else
-			Debug.TraceConditional("slavery.GetAgenda:: cannot get slot for "+akActor, resources.verbose)
+			resources.trace("slavery.GetAgenda:: cannot get slot for "+akActor)
 		endIf
 	endIf
 	
@@ -322,30 +322,58 @@ endFunction
 
 function SetFocusTarget(Actor akActor, Actor akTarget)
 	if !akActor
-		Debug.TraceConditional("slavery.SetFocusTarget:: akActor is none", resources.verbose)
+		resources.trace("slavery.SetFocusTarget:: akActor is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akActor)
 		if slot
 			slot.focusTarget = akTarget
 		else
-			Debug.TraceConditional("slavery.SetFocusTarget:: cannot get slot for "+akActor, resources.verbose)
+			resources.trace("slavery.SetFocusTarget:: cannot get slot for "+akActor)
 		endIf
 	endIf
 endFunction
 
 Actor function GetFocusTarget(Actor akActor)
 	if !akActor
-		Debug.TraceConditional("slavery.GetFocusTarget:: akActor is none", resources.verbose)
+		resources.trace("slavery.GetFocusTarget:: akActor is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akActor)
 		if slot
 			return slot.focusTarget
 		else
-			Debug.TraceConditional("slavery.GetFocusTarget:: cannot get slot for "+akActor, resources.verbose)
+			resources.trace("slavery.GetFocusTarget:: cannot get slot for "+akActor)
 		endIf
 	endIf
 
 	return none
+endFunction
+
+function SetAIActive(Actor akActor, Bool abState = true)
+	if !akActor
+		resources.trace("slavery.SetAIActive:: akActor is none")
+	else
+		_sf_ActorSlot slot = GetActorInstance(akActor)
+		if slot
+			slot.AIActive = abState
+		else
+			resources.trace("slavery.SetAIActive:: cannot get slot for "+akActor)
+		endIf
+	endIf
+endFunction
+
+bool function GetAIActive(Actor akActor)
+	if !akActor
+		resources.trace("slavery.GetAIActive:: akActor is none")
+	else
+		_sf_ActorSlot slot = GetActorInstance(akActor)
+		if slot
+			return slot.AIActive
+		else
+			resources.trace("slavery.GetAIActive:: cannot get slot for "+akActor)
+		endIf
+	endIf
+	
+	return false
 endFunction
 ; END AGENDA FUNCTIONS ============================================================================
 
@@ -357,42 +385,42 @@ Bool function LeashTrigger(Actor akSlave)
 	if akSlave != none
 		Actor kTarget = GetLeashTarget(akSlave)
 		Float fLeash  = GetLeashLength(akSlave)
-		Bool bEnabled = GetLeashEnabled(akSlave)
 		Bool bLOSReq  = GetLeashLOS(akSlave)
 
-		Bool bDist    = bEnabled && kTarget && kTarget.GetDistance(akSlave) > fLeash
+		Bool bDist    = kTarget && kTarget.GetDistance(akSlave) > fLeash
 		Bool bActive  = bDist && (!bLOSReq || (bLOSReq && kTarget.HasLOS(akSlave)))
 
-		Debug.TraceConditional("slavery.LeashTrigger:: "+kTarget+" "+fLeash+" "+bEnabled+" "+bLOSReq+" "+bDist+" "+bActive, resources.verbose)
+		SetLeashActive(akSlave, bActive)
+		SetAIActive(akSlave, bActive)
 		return bActive
 	else
-		Debug.TraceConditional("slavery.LeashTrigger:: akSlave is none", resources.verbose)
+		resources.trace("slavery.LeashTrigger:: akSlave is none")
 		return false
 	endIf
 endFunction
 
-function SetLeashEnabled(Actor akSlave, Bool abState = true)
+function SetLeashActive(Actor akSlave, Bool abState = true)
 	if !akSlave
-		Debug.TraceConditional("slavery.SetLeashEnabled:: akSlave is none", resources.verbose)
+		resources.trace("slavery.SetLeashActive:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
-			slot.leashEnabled = abState
+			slot.leashActive = abState
 		else
-			Debug.TraceConditional("slavery.SetLeashEnabled:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.SetLeashActive:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 endFunction
 
-bool function GetLeashEnabled(Actor akSlave)
+bool function GetLeashActive(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetLeashEnabled:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetLeashActive:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
-			return slot.leashEnabled
+			return slot.leashActive
 		else
-			Debug.TraceConditional("slavery.GetLeashEnabled:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.GetLeashActive:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 	
@@ -401,26 +429,26 @@ endFunction
 
 function SetLeashTarget(Actor akSlave, Actor akTarget)
 	if !akSlave
-		Debug.TraceConditional("slavery.SetLeashTarget:: akSlave is none", resources.verbose)
+		resources.trace("slavery.SetLeashTarget:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			slot.leashTarget = akTarget
 		else
-			Debug.TraceConditional("slavery.SetLeashTarget:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.SetLeashTarget:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 endFunction
 
 Actor function GetLeashTarget(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetLeashTarget:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetLeashTarget:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			return slot.leashTarget
 		else
-			Debug.TraceConditional("slavery.GetLeashTarget:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.GetLeashTarget:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 
@@ -429,13 +457,13 @@ endFunction
 
 bool function GetLeashLOS(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetLeashLOS:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetLeashLOS:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			return slot.leashLOS
 		else
-			Debug.TraceConditional("slavery.GetLeashLOS:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.GetLeashLOS:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 	
@@ -444,26 +472,26 @@ endFunction
 
 function SetLeashLOS(Actor akSlave, Bool abState = true)
 	if !akSlave
-		Debug.TraceConditional("slavery.SetLeashLOS:: akSlave is none", resources.verbose)
+		resources.trace("slavery.SetLeashLOS:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			slot.leashLOS = abState
 		else
-			Debug.TraceConditional("slavery.SetLeashLOS:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.SetLeashLOS:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 endFunction
 
 float function GetLeashLength(Actor akSlave)
 	if !akSlave
-		Debug.TraceConditional("slavery.GetLeashLength:: akSlave is none", resources.verbose)
+		resources.trace("slavery.GetLeashLength:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			return slot.leashLength
 		else
-			Debug.TraceConditional("slavery.GetLeashLength:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.GetLeashLength:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 
@@ -472,13 +500,13 @@ endFunction
 
 function SetLeashLength(Actor akSlave, float afVal = 256.0)
 	if akSlave != none
-		Debug.TraceConditional("slavery.SetLeashLength:: akSlave is none", resources.verbose)
+		resources.trace("slavery.SetLeashLength:: akSlave is none")
 	else
 		_sf_ActorSlot slot = GetActorInstance(akSlave)
 		if slot
 			slot.leashLength = afVal
 		else
-			Debug.TraceConditional("slavery.SetLeashLength:: cannot get slot for "+akSlave, resources.verbose)
+			resources.trace("slavery.SetLeashLength:: cannot get slot for "+akSlave)
 		endIf
 	endIf
 endFunction
@@ -501,7 +529,7 @@ _sf_ActorSlot function initActorInstance(Actor akActor)
 	_sf_ActorSlot slot = none
 
 	if !akActor
-		Debug.TraceConditional("slavery.initActorInstance:: akActor is none", resources.verbose)
+		resources.trace("slavery.initActorInstance:: akActor is none")
 	else
 		slot = GetActorInstance(akActor)
 
@@ -510,7 +538,7 @@ _sf_ActorSlot function initActorInstance(Actor akActor)
 		endIf
 	endIf
 
-	Debug.TraceConditional("slavery.initActorInstance::return:" + slot, resources.verbose)
+	resources.trace("slavery.initActorInstance::return:" + slot)
 	return slot
 endFunction
 
@@ -520,7 +548,7 @@ _sf_ActorSlot function SetActorInstance(Actor akActor)
 	_sf_ActorSlot nthAlias = none
 	
 
-	Debug.TraceConditional("slavery.SetActorInstance::"+akActor+" out of "+idx, resources.verbose)
+	resources.trace("slavery.SetActorInstance::"+akActor+" out of "+idx)
 	while idx > 0 && !found
 		idx -= 1
 		nthAlias = self.GetNthAlias(idx) as _sf_ActorSlot
@@ -528,7 +556,7 @@ _sf_ActorSlot function SetActorInstance(Actor akActor)
 		if !nthAlias.SelfRef
 			found = true
 
-			Debug.TraceConditional("slavery.SetActorInstance::"+akActor+" at "+idx, resources.verbose)
+			resources.trace("slavery.SetActorInstance::"+akActor+" at "+idx)
 			
 			SetAliasID(akActor, idx)
 			
@@ -546,7 +574,7 @@ _sf_ActorSlot function GetActorInstance(Actor akActor)
 	endIf
 
 	int idx = GetAliasID(akActor)
-	;Debug.TraceConditional("slavery.GetActorInstance::"+akActor+" at "+idx, resources.verbose)
+	;resources.trace("slavery.GetActorInstance::"+akActor+" at "+idx)
 
 	if idx >= 0
 		return self.GetNthAlias(idx) as _sf_ActorSlot
@@ -556,34 +584,6 @@ _sf_ActorSlot function GetActorInstance(Actor akActor)
 endFunction
 ; END ALIAS FUNCTIONS =============================================================================
 
-
-function SetAIActive(Actor akSlave, Bool abState = true)
-	if !akSlave
-		Debug.TraceConditional("slavery.SetAIActive:: akSlave is none", resources.verbose)
-	else
-		_sf_ActorSlot slot = GetActorInstance(akSlave)
-		if slot
-			slot.AIActive = abState
-		else
-			Debug.TraceConditional("slavery.SetAIActive:: cannot get slot for "+akSlave, resources.verbose)
-		endIf
-	endIf
-endFunction
-
-bool function GetAIActive(Actor akSlave)
-	if !akSlave
-		Debug.TraceConditional("slavery.GetAIActive:: akSlave is none", resources.verbose)
-	else
-		_sf_ActorSlot slot = GetActorInstance(akSlave)
-		if slot
-			return slot.AIActive
-		else
-			Debug.TraceConditional("slavery.GetAIActive:: cannot get slot for "+akSlave, resources.verbose)
-		endIf
-	endIf
-	
-	return false
-endFunction
 
 function SetAliasID(Actor akActor, int aiVal)
 	int abso = math.abs(aiVal) as int
@@ -599,9 +599,9 @@ function SetAliasID(Actor akActor, int aiVal)
 		akActor.SetFactionRank(resources._sf_alias_mult_fact, mult)
 		akActor.SetFactionRank(resources._sf_alias_modu_fact, modu)
 		akActor.SetFactionRank(resources._sf_alias_sign_fact, sign)
-		;Debug.TraceConditional("slavery.SetAliasID:: "+abso+" -> "+mult+" "+modu+" "+sign, resources.verbose)
+		;resources.trace("slavery.SetAliasID:: "+abso+" -> "+mult+" "+modu+" "+sign)
 	else
-		Debug.TraceConditional("slavery.SetAliasID:: absolute value cannot exceed 16256", resources.verbose)
+		resources.trace("slavery.SetAliasID:: absolute value cannot exceed 16256")
 	endIf
 endFunction
 
@@ -613,7 +613,7 @@ int function GetAliasID(Actor akActor)
 	if mult < 0 || modu < 0
 		return resources.VOID
 	else
-		;Debug.TraceConditional("slavery.GetAliasID:: "+mult+" "+modu+" "+sign, resources.verbose)
+		;resources.trace("slavery.GetAliasID:: "+mult+" "+modu+" "+sign)
 		return (mult + modu) * sign
 	endIf
 endFunction
