@@ -115,6 +115,10 @@ Bool property AIActive hidden
 		if myAIActive != abActive
 			resources.trace(self+" AIActive "+abActive)
 		endIf
+		
+		if packagesOn
+			selfRef.EvaluatePackage()
+		endIf
 
 		myAIActive = abActive
 	endFunction
@@ -136,11 +140,6 @@ function initSlot(Actor akActor, int aiVal)
 
 		int mult = math.floor(abso / 127)
 		int modu = abso % 127
-		int sign = 1
-
-		if aiVal < 0
-			sign = -1
-		endIf
 		
 		index    = aiVal
 		SelfRef  = GetActorReference()
@@ -148,12 +147,7 @@ function initSlot(Actor akActor, int aiVal)
 
 		selfRef.SetFactionRank(resources._sf_alias_mult_fact, mult)
 		selfRef.SetFactionRank(resources._sf_alias_modu_fact, modu)
-		selfRef.SetFactionRank(resources._sf_alias_sign_fact, sign)
 
-		selfRef.SetFactionRank(resources._sf_leash_mult_fact, mult)
-		selfRef.SetFactionRank(resources._sf_leash_modu_fact, modu)
-		selfRef.SetFactionRank(resources._sf_leash_indx_fact, 0)
-		
 		resources.trace("slavery.initSlot::"+akActor.GetLeveledActorBase().GetName()+" at "+aiVal)
 	endIf	
 endFunction
@@ -189,8 +183,6 @@ endFunction
 
 function EnableAI()
 	if isPlayer
-		Game.SetPlayerAiDriven(true)
-
 		slavery.bMovement = Game.IsMovementControlsEnabled()
 		slavery.bFighting = Game.IsFightingControlsEnabled()
 		slavery.bCamera   = Game.IsCamSwitchControlsEnabled()
@@ -202,6 +194,8 @@ function EnableAI()
 
 		Game.DisablePlayerControls(true, true, true, !slavery.bLooking, true, true, true, true)
 		Game.ForceThirdPerson()
+
+		Game.SetPlayerAiDriven(true)
 	endIf
 	
 	if !packagesOn
@@ -214,8 +208,6 @@ function EnableAI()
 		selfRef.PathToReference(leashTarget.selfRef, fSpeed)
 		locked = false
 	endIf
-
-	selfRef.EvaluatePackage()
 endFunction
 
 function DisableAI()
@@ -223,8 +215,6 @@ function DisableAI()
 		Game.EnablePlayerControls(slavery.bMovement, slavery.bFighting, slavery.bCamera, !slavery.bLooking, slavery.bSneaking, slavery.bMenu, slavery.bActivate, slavery.bJournal)
 		Game.SetPlayerAiDriven(false)
 	endIf
-
-	selfRef.EvaluatePackage()
 endFunction
 
 
@@ -332,6 +322,7 @@ _sf_ActorSlot property leashLead hidden
 
 				selfRef.SetFactionRank(resources._sf_leash_mult_fact, mult)
 				selfRef.SetFactionRank(resources._sf_leash_modu_fact, modu)
+				resources.trace(self+" property leashLead *"+mult+" %"+modu)
 			else
 				selfRef.RemoveFromFaction(resources._sf_leash_mult_fact)
 				selfRef.RemoveFromFaction(resources._sf_leash_modu_fact)
@@ -449,12 +440,15 @@ event OnCellLoad()
 endEvent
 
 event OnPackageStart(Package akNewPackage)
+	resources.trace(self+" OnPackageStart "+akNewPackage)
 endEvent
 
 event OnPackageChange(Package akOldPackage)
+	resources.trace(self+" OnPackageChange "+akOldPackage)
 endEvent
 
 event OnPackageEnd(Package akOldPackage)
+	resources.trace(self+" OnPackageEnd "+akOldPackage)
 endEvent
 
 
