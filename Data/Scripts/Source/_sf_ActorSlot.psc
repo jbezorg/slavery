@@ -8,10 +8,19 @@ _sf_resources     property resources             auto hidden
 
 Bool              property locked = false        auto hidden
 Bool              property leashLOS = false      auto hidden
+Bool              property leashFirst = false    auto hidden
+Bool              property focusFirst = false    auto hidden
 Bool              property isPlayer = false      auto hidden
 
 Form[]            property joinedFactions        auto hidden
 Int               property status                auto hidden
+
+
+bool property packagesOn
+	bool function get()
+		return resources._sf_packages_enabled.GetValueInt() == 1
+	endFunction
+endProperty
 
 
 int clearProperties = 7
@@ -25,35 +34,29 @@ _sf_ActorSlot kMaster = none
 _sf_ActorSlot property master hidden
 	function Set(_sf_ActorSlot akMaster)
 		if !locked
-			Bool hasSlaveSpell = mySelfRef.HasSpell(resources._sf_slave_spell)
+			Bool hasSlaveSpell = selfRef.HasSpell(resources._sf_slave_spell)
 			Bool hasNewMaster  = akMaster != none
 			Bool hasOldMaster  = kMaster != none
 			bool hasSlaves     = slaves.length > 0
-
-			if hasNewMaster && !hasSlaveSpell
-				mySelfRef.AddSpell(resources._sf_slave_spell)
-			elseIf !hasNewMaster && hasSlaveSpell
-				mySelfRef.RemoveSpell(resources._sf_slave_spell)
-			endIf
 
 			if hasNewMaster && !hasOldMaster
 				kMaster = addMaster(akMaster)
 				unsetClearBit(0x00000001)
 			elseIf hasNewMaster && hasOldMaster
-				kMaster = removeSlave()
+				kMaster = removeMaster(true)
 				setClearBit(0x00000001)
-				kMaster = addMaster(akMaster)
+				kMaster = addMaster(akMaster, true)
 				unsetClearBit(0x00000001)
 			elseIf !hasNewMaster && hasOldMaster
-				kMaster = removeSlave()
+				kMaster = removeMaster()
 				setClearBit(0x00000001)
 			else
 				setClearBit(0x00000001)
 			endIf
 			
-			if !hasNewMaster && !hasSlaves
+			if mySlaves.length == 0 && kMaster == none
 				emptySlot()
-			endIf
+			endIf			
 		endIf
 	endFunction
 	_sf_ActorSlot function Get()
@@ -61,7 +64,11 @@ _sf_ActorSlot property master hidden
 	endFunction
 endProperty
 
-_sf_ActorSlot function addMaster(_sf_ActorSlot akSlot)
+_sf_ActorSlot function addMaster(_sf_ActorSlot akSlot, bool abTransfer = false)
+	if !abTransfer && !selfRef.HasSpell( resources._sf_slave_spell )
+		selfRef.AddSpell( resources._sf_slave_spell )
+	endIf
+
 	int idx = resources._sf_faction_list.GetSize()
 	while idx > 0
 		idx -= 1
@@ -74,7 +81,11 @@ _sf_ActorSlot function addMaster(_sf_ActorSlot akSlot)
 	return akSlot
 endFunction
 
-_sf_ActorSlot function removeSlave()
+_sf_ActorSlot function removeMaster(bool abTransfer = false)
+	if !abTransfer && selfRef.HasSpell( resources._sf_slave_spell )
+		selfRef.RemoveSpell( resources._sf_slave_spell )
+	endIf
+
 	int idx = joinedFactions.length
 	while idx > 0
 		idx -= 1
@@ -90,50 +101,19 @@ endFunction
 ; PROPERTY SELFREF ================================================================================
 ; 0x00000002 ======================================================================================
 int               property index = -1           auto hidden
-
-actor mySelfRef = none
-actor property selfRef hidden
-	function Set(actor akActor)
-		if !locked
-			Bool hasNewActor = akActor != none
-			Bool hasOldActor = mySelfRef != none
-			Bool hasMaster   = kMaster != none
-			bool hasSlaves   = slaves.length > 0
-
-			if hasNewActor && !hasOldActor
-				mySelfRef = addSelf(akActor)
-				unsetClearBit(0x00000002)
-			elseIf hasNewActor && hasOldActor
-				mySelfRef = removeSelf()
-				setClearBit(0x00000002)
-				mySelfRef = addSelf(akActor)
-				unsetClearBit(0x00000002)
-			elseIf !hasNewActor && hasOldActor
-				mySelfRef = removeSelf()
-				setClearBit(0x00000002)
-			else
-				setClearBit(0x00000002)
-			endIf
-			
-			if !hasNewActor && hasSlaves
-				slaves = none
-			endIf
-		endIf
-	endFunction
-	actor function Get()
-		return mySelfRef
-	endFunction
-endProperty
+actor             property selfRef              auto hidden
 
 Bool myAIActive = false
 Bool property AIActive hidden
 	function Set(bool abActive)
 		if !myAIActive && abActive
-			resources.trace("AIActive"+abActive)
 			EnableAI()
 		elseIf myAIActive && !abActive
-			resources.trace("AIActive"+abActive)
 			DisableAI()
+		endIf
+
+		if myAIActive != abActive
+			resources.trace(self+" AIActive "+abActive)
 		endIf
 
 		myAIActive = abActive
@@ -143,39 +123,68 @@ Bool property AIActive hidden
 	endFunction
 endProperty
 
-actor function addSelf(actor akActor)
-	isPlayer = akActor == Game.GetPlayer()
-	ForceRefTo(akActor)
-	return akActor
+function initSlot(Actor akActor, int aiVal)
+	clearProperties = 0
+	int abso = math.abs(aiVal) as int
+
+	if !akActor
+		resources.trace("slavery.initSlot:: akActor is none")
+	elseIf abso > 16256
+		resources.trace("slavery.initSlot:: absolute value cannot exceed 16256")
+	else
+		ForceRefTo(akActor)
+
+		int mult = math.floor(abso / 127)
+		int modu = abso % 127
+		int sign = 1
+
+		if aiVal < 0
+			sign = -1
+		endIf
+		
+		index    = aiVal
+		SelfRef  = GetActorReference()
+		isPlayer = SelfRef == Game.GetPlayer()
+
+		selfRef.SetFactionRank(resources._sf_alias_mult_fact, mult)
+		selfRef.SetFactionRank(resources._sf_alias_modu_fact, modu)
+		selfRef.SetFactionRank(resources._sf_alias_sign_fact, sign)
+
+		selfRef.SetFactionRank(resources._sf_leash_mult_fact, mult)
+		selfRef.SetFactionRank(resources._sf_leash_modu_fact, modu)
+		selfRef.SetFactionRank(resources._sf_leash_indx_fact, 0)
+		
+		resources.trace("slavery.initSlot::"+akActor.GetLeveledActorBase().GetName()+" at "+aiVal)
+	endIf	
 endFunction
 
-actor function removeSelf()
+function emptySlot()
+	selfRef.RemoveFromFaction(resources._sf_alias_mult_fact)
+	selfRef.RemoveFromFaction(resources._sf_alias_modu_fact)
+	selfRef.RemoveFromFaction(resources._sf_alias_sign_fact)
+
+	selfRef.RemoveFromFaction(resources._sf_focus_mult_fact)
+	selfRef.RemoveFromFaction(resources._sf_focus_modu_fact)
+	selfRef.RemoveFromFaction(resources._sf_focus_indx_fact)
+
+	selfRef.RemoveFromFaction(resources._sf_leash_mult_fact)
+	selfRef.RemoveFromFaction(resources._sf_leash_modu_fact)
+	selfRef.RemoveFromFaction(resources._sf_leash_indx_fact)
+
+	slaves   = _sf_utility.nullSlotArray()
+	selfRef  = none
+	master   = none
 	isPlayer = false
 	index    = -1
-	mySelfRef.RemoveFromFaction(resources._sf_alias_mult_fact)
-	mySelfRef.RemoveFromFaction(resources._sf_alias_modu_fact)
-	mySelfRef.RemoveFromFaction(resources._sf_alias_sign_fact)
-	return none
-endFunction
 
-function setActorOffset()
-	if selfRef
-		Float fHalf  = leashLength/2.0
-		Float fPX    = -fHalf * Math.Sin(leashTarget.GetAngleZ())
-		Float fPY    = -fHalf * Math.Cos(leashTarget.GetAngleZ())
-		Float fPZ    = 0.0
-		Float fAX    = 0.0
-		Float fAY    = 0.0
-		Float fAZ    = selfRef.GetAngleZ() - selfRef.GetHeadingAngle(leashTarget)
-
-		selfRef.KeepOffsetFromActor(leashTarget, fPX, fPY, fPZ, fAX, fAY, fAZ, fHalf, leashLength)
-	endIf
-endFunction
-
-function clearActorOffset()
-	if selfRef
-		selfRef.ClearKeepOffsetFromActor()
-	endIf
+	locked = true
+	int delay = 0
+	while clearProperties < 7 && delay < 10
+		Utility.Wait(0.2)
+		delay += 1
+	endWhile
+	Clear()
+	locked = false
 endFunction
 
 function EnableAI()
@@ -193,10 +202,19 @@ function EnableAI()
 
 		Game.DisablePlayerControls(true, true, true, !slavery.bLooking, true, true, true, true)
 		Game.ForceThirdPerson()
-	else
-		setActorOffset()
 	endIf
 	
+	if !packagesOn
+		float fSpeed = resources.walkspeed
+		if resources.zbfLoaded
+			fSpeed = resources.zbfWalkspeed.GetValue()
+		endIf
+
+		locked = true
+		selfRef.PathToReference(leashTarget.selfRef, fSpeed)
+		locked = false
+	endIf
+
 	selfRef.EvaluatePackage()
 endFunction
 
@@ -204,12 +222,12 @@ function DisableAI()
 	if isPlayer
 		Game.EnablePlayerControls(slavery.bMovement, slavery.bFighting, slavery.bCamera, !slavery.bLooking, slavery.bSneaking, slavery.bMenu, slavery.bActivate, slavery.bJournal)
 		Game.SetPlayerAiDriven(false)
-	else
-		clearActorOffset()
 	endIf
 
 	selfRef.EvaluatePackage()
 endFunction
+
+
 
 
 ;##################################################################################################
@@ -226,15 +244,19 @@ _sf_ActorSlot[] property slaves hidden
 				mySlaves = addSlaves(akSlaves)
 				unsetClearBit(0x00000004)
 			elseIf hasNewSlaves && hasOldSlaves
-				mySlaves = removeSlaves(mySlaves)
+				mySlaves = removeSlaves(mySlaves, true)
 				setClearBit(0x00000004)
-				mySlaves = addSlaves(akSlaves)
+				mySlaves = addSlaves(akSlaves, true)
 				unsetClearBit(0x00000004)
 			elseIf !hasNewSlaves && hasOldSlaves
 				mySlaves = removeSlaves(mySlaves)
 				setClearBit(0x00000004)
 			else
 				setClearBit(0x00000004)		
+			endIf
+			
+			if mySlaves.length == 0 && kMaster == none
+				emptySlot()
 			endIf
 		endIf
 	endFunction
@@ -243,16 +265,16 @@ _sf_ActorSlot[] property slaves hidden
 	endFunction
 endProperty
 
-_sf_ActorSlot[] function addSlaves(_sf_ActorSlot[] akSlots)
-	if !selfRef.HasSpell( resources._sf_master_spell )
+_sf_ActorSlot[] function addSlaves(_sf_ActorSlot[] akSlots, bool abTransfer = false)
+	if !abTransfer && !selfRef.HasSpell( resources._sf_master_spell )
 		selfRef.AddSpell( resources._sf_master_spell )
 	endIf
 
 	return _sf_utility.compressSlotArray(akSlots)
 endFunction
 
-_sf_ActorSlot[] function removeSlaves(_sf_ActorSlot[] akSlots)
-	if selfRef.HasSpell( resources._sf_master_spell )
+_sf_ActorSlot[] function removeSlaves(_sf_ActorSlot[] akSlots, bool abTransfer = false)
+	if !abTransfer && selfRef.HasSpell( resources._sf_master_spell )
 		selfRef.RemoveSpell( resources._sf_master_spell )
 	endIf
 
@@ -265,6 +287,81 @@ endFunction
 ;##################################################################################################
 ; PROPERTY LEASH ==================================================================================
 ; 0x00000008 ======================================================================================
+_sf_ActorSlot     property leashTarget          auto hidden
+
+_sf_ActorSlot[] myLeashChain
+_sf_ActorSlot[] property leashChain hidden
+	function Set(_sf_ActorSlot[] akSlots)
+		leashIdx  = akSlots.Find(self)
+		Bool hasLeash = akSlots.length > 1 && leashIdx >= 0
+		Bool isLeader = leashIdx == 0
+		
+		if hasLeash && !isLeader && !leashFirst
+			leashLead   = akSlots[0]
+			leashTarget = akSlots[leashIdx - 1]
+			
+		elseIf hasLeash && !isLeader && leashFirst
+			leashLead   = akSlots[0]
+			leashTarget = akSlots[0]
+			leashIdx    = 1
+		else
+			leashLead   = none
+			leashTarget = none
+		endIf
+		
+		if leashTarget
+			setActorOffset()
+		else
+			clearActorOffset()
+		endIf
+
+		myLeashChain = akSlots
+	endFunction
+	_sf_ActorSlot[] function Get()
+		return myLeashChain
+	endFunction
+endProperty
+
+_sf_ActorSlot myleashLead
+_sf_ActorSlot property leashLead hidden
+	function Set(_sf_ActorSlot akLead)
+		if !locked
+			if akLead
+				int mult = math.floor(akLead.index / 127)
+				int modu = akLead.index % 127
+
+				selfRef.SetFactionRank(resources._sf_leash_mult_fact, mult)
+				selfRef.SetFactionRank(resources._sf_leash_modu_fact, modu)
+			else
+				selfRef.RemoveFromFaction(resources._sf_leash_mult_fact)
+				selfRef.RemoveFromFaction(resources._sf_leash_modu_fact)
+			endIf
+
+			myleashLead = akLead
+		endIf
+	endFunction
+	_sf_ActorSlot function Get()
+		return myleashLead
+	endFunction
+endProperty
+
+int myLeashIdx
+int property leashIdx hidden
+	function Set(int aiVal)
+		if aiVal >= 0
+			selfRef.SetFactionRank(resources._sf_leash_indx_fact, aiVal)
+		else
+			selfRef.RemoveFromFaction(resources._sf_leash_indx_fact)
+		endIf
+		
+		resources.trace(self+" property leashIdx = "+aiVal)
+		myLeashIdx = aiVal
+	endFunction
+	int function Get()
+		return myLeashIdx
+	endFunction
+endProperty
+
 Bool myLeashActive
 Bool property leashActive hidden
 	function Set(bool abActive)
@@ -292,92 +389,15 @@ float property leashLength hidden
 	endFunction
 endProperty
 
-Actor myLeashTarget
-Actor property leashTarget hidden
-	function Set(Actor akActor)
-		Bool hasNewActor = akActor != none
-		Bool hasOldActor = myLeashTarget != none
-
-		if hasNewActor && !hasOldActor
-			SetLeashID(selfRef, index)
-			SetLeashID(akActor, index)
-		elseIf hasNewActor && hasOldActor
-			ClearLeashID(myLeashTarget)
-			SetLeashID(selfRef, index)
-			SetLeashID(akActor, index)
-		elseIf !hasNewActor && hasOldActor
-			ClearLeashID(myLeashTarget)
-			ClearLeashID(akActor)
-		endIf
-			
-		myLeashTarget = akActor
-	endFunction
-	Actor function Get()
-		return myLeashTarget
-	endFunction
-endProperty
-
-int function GetLeashID(Actor akActor)
-	int mult = akActor.GetFactionRank(resources._sf_leash_mult_fact) * 127
-	int modu = akActor.GetFactionRank(resources._sf_leash_modu_fact)
-
-	if mult < 0 || modu < 0
-		return resources.VOID
-	else
-		return mult + modu
-	endIf
-endFunction
-
-function SetLeashID(Actor akActor, int aiVal)
-	int abso = math.abs(aiVal) as int
-	if abso <= 16256
-		int mult = math.floor(abso / 127)
-		int modu = abso % 127
-
-		akActor.SetFactionRank(resources._sf_leash_mult_fact, mult)
-		akActor.SetFactionRank(resources._sf_leash_modu_fact, modu)
-	else
-		resources.trace("slavery.SetLeashID:: absolute value cannot exceed 16256")
-	endIf
-endFunction
-
-function ClearLeashID(Actor akActor)
-	akActor.RemoveFromFaction(resources._sf_leash_mult_fact)
-	akActor.RemoveFromFaction(resources._sf_leash_modu_fact)
-endFunction
-
 
 
 
 ;##################################################################################################
 ; PROPERTY FOCUS ==================================================================================
 ; 0x00000010 ======================================================================================
-Actor myFocusTarget
-Actor property focusTarget hidden
-	function Set(Actor akActor)
-		Bool hasNewActor = akActor != none
-		Bool hasOldActor = myFocusTarget != none
+actor             property focusTarget          auto hidden
 
-		if hasNewActor && !hasOldActor
-			SetFocusID(selfRef, index)
-			SetFocusID(akActor, index)
-		elseIf hasNewActor && hasOldActor
-			ClearFocusID(myFocusTarget)
-			SetFocusID(selfRef, index)
-			SetFocusID(akActor, index)
-		elseIf !hasNewActor && hasOldActor
-			ClearFocusID(myFocusTarget)
-			ClearFocusID(akActor)
-		endIf
-			
-		myFocusTarget = akActor	
-	endFunction
-	Actor function Get()
-		return myFocusTarget
-	endFunction
-endProperty
-
-function SetFocusID(Actor akActor, int aiVal)
+function SetFocusID(Actor akActor, int aiVal, int aiIndx)
 	int abso = math.abs(aiVal) as int
 	if abso <= 16256
 		int mult = math.floor(abso / 127)
@@ -385,6 +405,7 @@ function SetFocusID(Actor akActor, int aiVal)
 
 		akActor.SetFactionRank(resources._sf_focus_mult_fact, mult)
 		akActor.SetFactionRank(resources._sf_focus_modu_fact, modu)
+		akActor.SetFactionRank(resources._sf_focus_indx_fact, aiIndx)
 	else
 		resources.trace("slavery.SetFocusID:: absolute value cannot exceed 16256")
 	endIf
@@ -393,6 +414,7 @@ endFunction
 function ClearFocusID(Actor akActor)
 	akActor.RemoveFromFaction(resources._sf_focus_mult_fact)
 	akActor.RemoveFromFaction(resources._sf_focus_modu_fact)
+	akActor.RemoveFromFaction(resources._sf_focus_indx_fact)
 endFunction
 
 
@@ -437,25 +459,6 @@ endEvent
 
 
 ; START LOCAL SCOPE FUNCTIONS =====================================================================
-function initSlot()
-	clearProperties = 0
-endFunction
-
-function emptySlot()
-	self.slaves  = _sf_utility.nullSlotArray()
-	self.selfRef = none
-	self.master  = none
-
-	self.locked = true
-	int delay = 0
-	while clearProperties < 7 && delay < 10
-		Utility.Wait(0.2)
-		delay += 1
-	endWhile
-	self.Clear()
-	self.locked = false
-endFunction
-
 function unsetClearBit(int bit)
 	clearProperties = Math.LogicalAnd(clearProperties, Math.LogicalNot(bit))
 endFunction
@@ -464,3 +467,23 @@ function setClearBit(int bit)
 	clearProperties = Math.LogicalOr(clearProperties, bit)
 endFunction
 
+function setActorOffset()
+	if selfRef && packagesOn
+		Actor kTarget = leashTarget.selfRef
+		Float fHalf   = leashLength/2.0
+		Float fPX     = -fHalf * Math.Sin(kTarget.GetAngleZ())
+		Float fPY     = -fHalf * Math.Cos(kTarget.GetAngleZ())
+		Float fPZ     = 0.0
+		Float fAX     = 0.0
+		Float fAY     = 0.0
+		Float fAZ     = selfRef.GetAngleZ() - selfRef.GetHeadingAngle(kTarget)
+
+		selfRef.KeepOffsetFromActor(kTarget, fPX, fPY, fPZ, fAX, fAY, fAZ, fHalf, leashLength)
+	endIf
+endFunction
+
+function clearActorOffset()
+	if selfRef && packagesOn
+		selfRef.ClearKeepOffsetFromActor()
+	endIf
+endFunction

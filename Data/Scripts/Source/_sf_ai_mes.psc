@@ -27,7 +27,7 @@ endEvent
 
 auto state active
 	event OnUpdate()
-		bAIState = slavery.LeashTrigger(kTarget)
+		slavery.LeashTrigger(kTarget)
 		RegisterForSingleUpdate(1.0)
 	endEvent
 endState

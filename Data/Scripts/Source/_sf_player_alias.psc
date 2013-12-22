@@ -7,9 +7,9 @@ event OnPlayerLoadGame()
 	actor player  = GetActorReference()
 	bool[] loaded = modsLoaded()
 	
-	slavery.zbfLoaded = loaded[0]
-	slavery.SLLoaded = loaded[1]
-	slavery.SLArousedLoaded = loaded[2]
+	resources.zbfLoaded = loaded[0]
+	resources.SLLoaded = loaded[1]
+	resources.SLArousedLoaded = loaded[2]
 endEvent
 
 bool[] function modsLoaded()
@@ -28,15 +28,16 @@ bool[] function modsLoaded()
 	while idx && cnt < mod.length
 		idx -= 1
 		name = Game.GetModName(idx)
-		if name == "ZaZAnimationPack.esm" || name == "ZaZAnimationPack.esp"
+		if !mod[0] && (name == "ZaZAnimationPack.esm" || name == "ZaZAnimationPack.esp")
+			resources.zbfWalkspeed = Game.GetFormFromFile(0x00008A4A, name) as GlobalVariable
 			mod[0] = true
 			cnt += 1
 		endIf
-		if name == "SexLab.esm"
+		if !mod[1] && name == "SexLab.esm"
 			mod[1] = true
 			cnt += 1
 		endIf
-		if name == "SexLabAroused.esm"
+		if !mod[2] && name == "SexLabAroused.esm"
 			mod[2] = true
 			cnt += 1
 		endIf

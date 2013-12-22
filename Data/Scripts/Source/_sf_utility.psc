@@ -399,7 +399,7 @@ _sf_ActorSlot[] function compressSlotArray(_sf_ActorSlot[] array) global
 	idx = array.length
 	while idx > 0
 		idx -= 1
-		if array[idx] != none
+		if array[idx] != none && array[idx].selfRef != none
 			cnt += 1
 		endIf
 	endWhile
