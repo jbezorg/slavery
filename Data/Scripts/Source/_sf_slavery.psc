@@ -424,35 +424,6 @@ endFunction
 
 
 ; START SLAVE LEASH FUNCTIONS =====================================================================
-Bool function LeashTrigger(Actor akSlave)
-	if akSlave != none
-		Bool bDist    = false
-		Bool bActive  = false
-		Actor kTarget = none
-		_sf_ActorSlot slot = GetActorInstance(akSlave)
-		
-		if slot && slot.leashIdx > 0
-			kTarget = slot.leashChain[slot.leashIdx - 1].selfRef
-			
-			if slot.leashActive
-				bDist = kTarget && kTarget.GetDistance(akSlave) > slot.leashLength * 0.75
-			else
-				bDist = kTarget && kTarget.GetDistance(akSlave) > slot.leashLength * 1.25
-			endIf
-
-			bActive  = bDist && (!slot.leashLOS || (slot.leashLOS && kTarget.HasLOS(akSlave)))
-
-			slot.leashActive = bActive
-			slot.AIActive    = bActive
-			return bActive
-		endIf
-	else
-		resources.trace("slavery.LeashTrigger:: akSlave is none")
-	endIf
-
-	return false
-endFunction
-
 bool function GetLeashActive(Actor akSlave)
 	if !akSlave
 		resources.trace("slavery.GetLeashActive:: akSlave is none")
@@ -522,6 +493,35 @@ function SetLeashLength(Actor akSlave, float afVal = 256.0)
 			resources.trace("slavery.SetLeashLength:: cannot get slot for "+akSlave)
 		endIf
 	endIf
+endFunction
+; UTILITY =========================================================================================
+Bool function LeashTrigger(Actor akSlave)
+	if akSlave != none
+		Bool bDist    = false
+		Bool bActive  = false
+		Actor kTarget = none
+		_sf_ActorSlot slot = GetActorInstance(akSlave)
+		
+		if slot && slot.leashIdx > 0
+			kTarget = slot.leashChain[slot.leashIdx - 1].selfRef
+			
+			if slot.leashActive
+				bDist = kTarget && kTarget.GetDistance(akSlave) > slot.leashLength * 0.75
+			else
+				bDist = kTarget && kTarget.GetDistance(akSlave) > slot.leashLength * 1.25
+			endIf
+
+			bActive  = bDist && (!slot.leashLOS || (slot.leashLOS && kTarget.HasLOS(akSlave)))
+
+			slot.leashActive = bActive
+			slot.AIActive    = bActive
+			return bActive
+		endIf
+	else
+		resources.trace("slavery.LeashTrigger:: akSlave is none")
+	endIf
+
+	return false
 endFunction
 ; END SLAVE LEASH FUNCTIONS =======================================================================
 
