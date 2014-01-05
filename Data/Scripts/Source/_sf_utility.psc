@@ -1,5 +1,30 @@
 Scriptname _sf_utility extends Quest
 
+
+function RemoveAllItemsByType(ObjectReference akContainer, Int aiType, bool abSilent = true, ObjectReference akOtherContainer = none) global
+	int idx = akContainer.GetNumItems()
+	while idx > 0
+		idx -= 1
+		Form nthForm = akContainer.GetNthForm(idx)
+		if nthForm.GetType() == aiType
+			akContainer.RemoveItem(nthForm, akContainer.GetItemCount(nthForm), abSilent, akOtherContainer)
+		endIf
+	endWhile
+endFunction
+
+function RemoveAllItemsByKeyword(ObjectReference akContainer, Keyword akKeyword, bool abSilent = true, ObjectReference akOtherContainer = none) global
+	int idx = akContainer.GetNumItems()
+	while idx > 0
+		idx -= 1
+		Form nthForm = akContainer.GetNthForm(idx)
+
+		if nthForm.HasKeyword(akKeyword)
+			akContainer.RemoveItem(nthForm, akContainer.GetItemCount(nthForm), abSilent, akOtherContainer)
+		endIf
+	endWhile
+endFunction
+
+
 int[] function RemoveInt(int var, int[] array) global
 	int len = array.Length
 	if len <= 1
